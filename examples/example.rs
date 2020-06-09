@@ -1,4 +1,4 @@
-use warp_multibody::{FromPart};
+use warp_multipart::{FromPart};
 use warp::multipart::{FormData, Part};
 use warp::{Filter, Reply, Rejection};
 

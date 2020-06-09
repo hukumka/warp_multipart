@@ -38,9 +38,9 @@ fn generate_code(ident: &Ident, names: &[Ident], types: &[Type]) -> TokenStream2
         })
         .collect();
     quote!{
-        use warp_multibody::derive_imports::*;
         impl #ident {
-            async fn from_multipart(mut body: FormData) -> Result<Self, Error> {
+            async fn from_multipart(mut body: warp_multipart::derive_imports::FormData) -> Result<Self, warp_multipart::Error> {
+                use warp_multipart::derive_imports::*;
                 #(
                 let mut #names: Option<#types> = None;
                 )*

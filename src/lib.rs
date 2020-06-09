@@ -1,15 +1,15 @@
 pub use warp_multipart_derive::*;
 
 use async_trait::async_trait;
-use warp::filters::multipart::Part;
 use bytes::Buf;
-use thiserror::Error;
 use std::string::FromUtf8Error;
+use thiserror::Error;
+use warp::filters::multipart::Part;
 
 pub mod derive_imports {
     pub use super::{Error, FromPart};
-    pub use warp::filters::multipart::{Part, FormData};
     pub use futures::stream::StreamExt;
+    pub use warp::filters::multipart::{FormData, Part};
 }
 
 #[derive(Error, Debug)]
@@ -25,15 +25,14 @@ pub enum Error {
 }
 
 #[async_trait]
-pub trait FromPart: Sized{
+pub trait FromPart: Sized {
     async fn from_part(part: Part) -> Result<Self, Error>;
 }
 
 #[async_trait]
 impl FromPart for String {
     async fn from_part(mut part: Part) -> Result<Self, Error> {
-        let mut data = part.data().await
-            .ok_or(Error::NoData)??;
+        let mut data = part.data().await.ok_or(Error::NoData)??;
         let mut buffer = vec![0; data.remaining()];
         data.copy_to_slice(&mut buffer);
         Ok(String::from_utf8(buffer)?)

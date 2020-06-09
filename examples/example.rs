@@ -1,6 +1,6 @@
-use warp_multipart::{FromPart};
 use warp::multipart::{FormData, Part};
-use warp::{Filter, Reply, Rejection};
+use warp::{Filter, Rejection, Reply};
+use warp_multipart::FromPart;
 
 #[derive(FromPart, Debug)]
 struct MultipartRequest {
@@ -22,7 +22,8 @@ async fn main() {
 }
 
 async fn request(x: u32, data: FormData) -> Result<impl Reply, Rejection> {
-    let data = MultipartRequest::from_multipart(data).await
+    let data = MultipartRequest::from_multipart(data)
+        .await
         .map_err(|_| warp::reject())?;
 
     println!("{}: {:?}", x, data);

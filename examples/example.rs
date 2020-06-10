@@ -5,6 +5,7 @@ use warp_multipart::FromPart;
 #[derive(FromPart, Debug)]
 struct MultipartRequest {
     name: String,
+    #[default]
     value: Option<String>,
     file: Part,
 }

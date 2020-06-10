@@ -2,7 +2,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use syn::{parse_macro_input, DeriveInput, Error, Data, DataStruct, Ident, Type, spanned::Spanned};
+use syn::{parse_macro_input, DeriveInput, Error, Data, DataStruct, Ident, Type, Attribute, spanned::Spanned};
 use quote::{quote};
 
 #[proc_macro_derive(FromPart, attributes(default))]
@@ -16,23 +16,29 @@ pub fn derive_from_part(input: TokenStream) -> TokenStream {
 fn impl_(input: &DeriveInput) -> Result<TokenStream2, Error> {
     if let Data::Struct(data) = &input.data {
         let ident = &input.ident;
-        let (names, types) = fields(data)?;
-        Ok(generate_code(ident, &names, &types))
+        let (names, types, is_default) = fields(data)?;
+        Ok(generate_code(ident, &names, &types, &is_default))
     } else {
         Err(Error::new(input.span(), "Expected struct."))
     }
 }
 
-fn generate_code(ident: &Ident, names: &[Ident], types: &[Type]) -> TokenStream2 {
+fn generate_code(ident: &Ident, names: &[Ident], types: &[Type], is_default: &[bool]) -> TokenStream2 {
     let names_str: Vec<String> = names.iter().map(|n| n.to_string()).collect();
     let reassignments: Vec<TokenStream2> = names.iter()
-        .map(|ident| {
+        .zip(is_default)
+        .map(|(ident, is_default)| {
             let s = ident.to_string();
+            let offpath = if *is_default {
+                quote! {Default::default()}
+            } else {
+                quote! {return Err(Error::MissingField(#s.to_string()));}
+            };
             quote!{
                 let #ident = if let Some(x) = #ident {
                     x
                 } else {
-                    return Err(Error::MissingField(#s.to_string()));
+                    #offpath
                 };
             }
         })
@@ -62,18 +68,28 @@ fn generate_code(ident: &Ident, names: &[Ident], types: &[Type]) -> TokenStream2
     }
 }
 
-fn fields(data: &DataStruct) -> Result<(Vec<Ident>, Vec<Type>), Error> {
+fn fields(data: &DataStruct) -> Result<(Vec<Ident>, Vec<Type>, Vec<bool>), Error> {
     let iter = data.fields.iter();
     let hint = iter.size_hint().0; 
     let mut names = Vec::with_capacity(hint);
     let mut types = Vec::with_capacity(hint);
+    let mut default = Vec::with_capacity(hint);
     for field in iter {
         if let Some(ident) = &field.ident {
             names.push(ident.clone());
             types.push(field.ty.clone());
+            default.push(is_default(&field.attrs));
         } else {
             return Err(Error::new(field.span(), "Expected struct with named fields."));
         }
     }
-    Ok((names, types))
+    Ok((names, types, default))
+}
+
+fn is_default(attrs: &[Attribute]) -> bool {
+    attrs.iter()
+        .any(|a| {
+            let path = &a.path;
+            quote!(#path).to_string() == quote!(default).to_string()
+        })
 }

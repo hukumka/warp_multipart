@@ -1,5 +1,4 @@
-use warp::multipart::{FormData};
-use warp::{Filter, Rejection, Reply};
+use warp::{Filter, Reply};
 use warp_multipart::{FromMultipart, JsonFile};
 use serde::Deserialize;
 
@@ -22,17 +21,13 @@ async fn main() {
         .and(warp::path("request"))
         .and(warp::path::param::<u32>())
         .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::multipart::form())
-        .and_then(request);
+        .and(warp_multipart::extract())
+        .map(request);
 
     warp::serve(promote).run(([127, 0, 0, 1], 3030)).await
 }
 
-async fn request(x: u32, data: FormData) -> Result<impl Reply, Rejection> {
-    let data = MultipartRequest::from_multipart(data)
-        .await
-        .map_err(|_| warp::reject())?;
-
+fn request(x: u32, data: MultipartRequest) -> impl Reply {
     println!("{}: {:?}", x, data);
-    Ok(warp::reply::html(""))
+    warp::reply::html("")
 }

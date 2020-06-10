@@ -11,6 +11,7 @@ use bytes::Buf;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 use warp::filters::multipart::{Part, FormData};
+use warp::{Filter, Rejection, reject::Reject};
 
 
 pub mod derive_imports {
@@ -35,6 +36,8 @@ pub enum Error {
     #[error("Error deserializing data")]
     Deserialize,
 }
+
+impl Reject for Error {}
 
 /// Types implementing this trait could be parsed from multipart data.
 #[async_trait]
@@ -73,6 +76,15 @@ impl<T: FromPart> FromPart for Option<T> {
         }
     }
 }
+
+pub fn extract<T: FromMultipart>() -> impl Filter<Extract=(T,), Error=Rejection> + Clone {
+    warp::multipart::form()
+        .and_then(|data| async {
+            T::from_multipart(data).await
+                .map_err(|e| warp::reject::custom(e))
+        })
+}
+
 
 pub(crate) async fn get_data(mut part: Part) -> Result<Vec<u8>, Error> {
     let mut data = part.data().await.ok_or(Error::NoData)??;

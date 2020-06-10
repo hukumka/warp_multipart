@@ -1,13 +1,19 @@
-use warp::multipart::{FormData, Part};
+use warp::multipart::{FormData};
 use warp::{Filter, Rejection, Reply};
-use warp_multipart::FromPart;
+use warp_multipart::{FromPart, JsonFile};
+use serde::Deserialize;
 
+#[derive(Deserialize, Debug)]
+struct File {
+    a: u32,
+    b: String,
+}
 #[derive(FromPart, Debug)]
 struct MultipartRequest {
     name: String,
     #[default]
     value: Option<String>,
-    file: Part,
+    file: JsonFile<File>,
 }
 
 #[tokio::main]

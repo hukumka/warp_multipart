@@ -1,10 +1,17 @@
 pub use warp_multipart_derive::*;
 
+#[cfg(feature="json")]
+mod json;
+
+#[cfg(feature="json")]
+pub use crate::json::*;
+
 use async_trait::async_trait;
 use bytes::Buf;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 use warp::filters::multipart::Part;
+
 
 pub mod derive_imports {
     pub use super::{Error, FromPart};
@@ -24,6 +31,8 @@ pub enum Error {
     Internal(#[from] warp::Error),
     #[error("Expected non-empty data")]
     Empty,
+    #[error("Error deserializing data")]
+    Deserialize,
 }
 
 #[async_trait]
@@ -33,14 +42,8 @@ pub trait FromPart: Sized {
 
 #[async_trait]
 impl FromPart for String {
-    async fn from_part(mut part: Part) -> Result<Self, Error> {
-        let mut data = part.data().await.ok_or(Error::NoData)??;
-        if data.remaining() == 0 {
-            return Err(Error::Empty);
-        }
-        let mut buffer = vec![0; data.remaining()];
-        data.copy_to_slice(&mut buffer);
-        Ok(String::from_utf8(buffer)?)
+    async fn from_part(part: Part) -> Result<Self, Error> {
+        Ok(String::from_utf8(get_data(part).await?)?)
     }
 }
 
@@ -61,4 +64,14 @@ impl<T: FromPart> FromPart for Option<T> {
             Err(e) => Err(e),
         }
     }
+}
+
+pub(crate) async fn get_data(mut part: Part) -> Result<Vec<u8>, Error> {
+    let mut data = part.data().await.ok_or(Error::NoData)??;
+    if data.remaining() == 0 {
+        return Err(Error::Empty);
+    }
+    let mut buffer = vec![0; data.remaining()];
+    data.copy_to_slice(&mut buffer);
+    Ok(buffer)
 }

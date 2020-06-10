@@ -22,6 +22,8 @@ pub enum Error {
     MissingField(String),
     #[error("Internal warp error.")]
     Internal(#[from] warp::Error),
+    #[error("Expected non-empty data")]
+    Empty,
 }
 
 #[async_trait]
@@ -33,6 +35,9 @@ pub trait FromPart: Sized {
 impl FromPart for String {
     async fn from_part(mut part: Part) -> Result<Self, Error> {
         let mut data = part.data().await.ok_or(Error::NoData)??;
+        if data.remaining() == 0 {
+            return Err(Error::Empty);
+        }
         let mut buffer = vec![0; data.remaining()];
         data.copy_to_slice(&mut buffer);
         Ok(String::from_utf8(buffer)?)
@@ -49,6 +54,11 @@ impl FromPart for Part {
 #[async_trait]
 impl<T: FromPart> FromPart for Option<T> {
     async fn from_part(part: Part) -> Result<Self, Error> {
-        Ok(Some(T::from_part(part).await?))
+        let res = T::from_part(part).await;
+        match res {
+            Ok(value) => Ok(Some(value)),
+            Err(Error::Empty) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 }

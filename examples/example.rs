@@ -1,6 +1,6 @@
 use warp::multipart::{FormData};
 use warp::{Filter, Rejection, Reply};
-use warp_multipart::{FromPart, JsonFile};
+use warp_multipart::{FromMultipart, JsonFile};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -8,7 +8,7 @@ struct File {
     a: u32,
     b: String,
 }
-#[derive(FromPart, Debug)]
+#[derive(FromMultipart, Debug)]
 struct MultipartRequest {
     name: String,
     #[default]

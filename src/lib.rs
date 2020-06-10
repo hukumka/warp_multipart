@@ -10,10 +10,11 @@ use async_trait::async_trait;
 use bytes::Buf;
 use std::string::FromUtf8Error;
 use thiserror::Error;
-use warp::filters::multipart::Part;
+use warp::filters::multipart::{Part, FormData};
 
 
 pub mod derive_imports {
+    pub use async_trait::async_trait;
     pub use super::{Error, FromPart};
     pub use futures::stream::StreamExt;
     pub use warp::filters::multipart::{FormData, Part};
@@ -35,6 +36,13 @@ pub enum Error {
     Deserialize,
 }
 
+/// Types implementing this trait could be parsed from multipart data.
+#[async_trait]
+pub trait FromMultipart: Sized {
+    async fn from_multipart(multipart: FormData) -> Result<Self, Error>;
+}
+
+/// How to parse part of multipart.
 #[async_trait]
 pub trait FromPart: Sized {
     async fn from_part(part: Part) -> Result<Self, Error>;

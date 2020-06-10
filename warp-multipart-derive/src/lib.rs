@@ -5,7 +5,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use syn::{parse_macro_input, DeriveInput, Error, Data, DataStruct, Ident, Type, Attribute, spanned::Spanned};
 use quote::{quote};
 
-#[proc_macro_derive(FromPart, attributes(default))]
+#[proc_macro_derive(FromMultipart, attributes(default))]
 pub fn derive_from_part(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     impl_(&input)
@@ -44,7 +44,9 @@ fn generate_code(ident: &Ident, names: &[Ident], types: &[Type], is_default: &[b
         })
         .collect();
     quote!{
-        impl #ident {
+        use warp_multipart::derive_imports::async_trait;
+        #[async_trait]
+        impl warp_multipart::FromMultipart for #ident {
             async fn from_multipart(mut body: warp_multipart::derive_imports::FormData) -> Result<Self, warp_multipart::Error> {
                 use warp_multipart::derive_imports::*;
                 #(
